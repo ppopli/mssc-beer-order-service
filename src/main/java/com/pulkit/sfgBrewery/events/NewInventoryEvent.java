@@ -1,6 +1,6 @@
 package com.pulkit.sfgBrewery.events;
 
-import com.pulkit.SfgBrewery.model.BeerDto;
+import com.pulkit.sfgBrewery.model.BeerDto;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor

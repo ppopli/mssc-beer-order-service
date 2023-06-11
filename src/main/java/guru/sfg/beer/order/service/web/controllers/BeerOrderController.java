@@ -17,8 +17,8 @@
 
 package guru.sfg.beer.order.service.web.controllers;
 
+import com.pulkit.sfgBrewery.model.BeerOrderDto;
 import guru.sfg.beer.order.service.services.BeerOrderService;
-import guru.sfg.beer.order.service.web.model.BeerOrderDto;
 import com.pulkit.sfgBrewery.model.BeerOrderPagedList;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
