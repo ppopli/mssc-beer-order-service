@@ -1,10 +1,10 @@
 package guru.sfg.beer.order.service.services;
 
+import com.pulkit.sfgBrewery.model.BeerOrderDto;
 import guru.sfg.beer.order.service.bootstrap.BeerOrderBootStrap;
 import guru.sfg.beer.order.service.domain.Customer;
 import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
 import guru.sfg.beer.order.service.repositories.CustomerRepository;
-import guru.sfg.beer.order.service.web.model.BeerOrderDto;
 import com.pulkit.sfgBrewery.model.BeerOrderLineDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
