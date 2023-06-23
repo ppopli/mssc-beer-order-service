@@ -16,6 +16,7 @@
  */
 package guru.sfg.beer.order.service.domain;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,9 +32,12 @@ import java.util.UUID;
  */
 @Getter
 @Setter
-@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 public class BeerOrderLine extends BaseEntity {
+
+    public BeerOrderLine() {
+    }
 
     @Builder
     public BeerOrderLine(UUID id, Long version, Timestamp createdDate, Timestamp lastModifiedDate,
