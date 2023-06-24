@@ -1,6 +1,7 @@
 package guru.sfg.beer.order.service.services;
 
 import com.pulkit.sfgBrewery.events.ValidateBeerOrderResponse;
+import com.pulkit.sfgBrewery.model.BeerOrderDto;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderEventEnum;
 import guru.sfg.beer.order.service.domain.BeerOrderStatusEnum;
@@ -41,9 +42,31 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
         .orElseThrow(() -> new RuntimeException("BeerOrder not found"));
     if (isValid) {
       sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.VALIDATION_PASSED);
+      BeerOrder validatedBeerOrder = beerOrderRepository.findOneById(beerOrderId);
+      sendBeerOrderEvent(validatedBeerOrder, BeerOrderEventEnum.ALLOCATE_ORDER);
     } else {
       sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.VALIDATION_FAILED);
     }
+  }
+
+  @Override
+  public void beerOrderAllocationPassed(BeerOrderDto beerOrderDto) {
+    BeerOrder beerOrder = beerOrderRepository.findOneById(beerOrderDto.getId());
+    sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_SUCCESS);
+    updateAllocateQty(beerOrderDto, beerOrder);
+  }
+
+  @Override
+  public void beerOrderAllocationFailed(BeerOrderDto beerOrderDto) {
+    BeerOrder beerOrder = beerOrderRepository.findOneById(beerOrderDto.getId());
+    sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_FAILED);
+  }
+
+  @Override
+  public void beerOrderAllocationPendingInventory(BeerOrderDto beerOrderDto) {
+    BeerOrder beerOrder = beerOrderRepository.findOneById(beerOrderDto.getId());
+    sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_NO_INVENTORY);
+    updateAllocateQty(beerOrderDto, beerOrder);
   }
 
   private void sendBeerOrderEvent(BeerOrder beerOrder, BeerOrderEventEnum eventEnum) {
@@ -65,5 +88,18 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
         });
     sm.start();
     return sm;
+  }
+
+  private void updateAllocateQty(BeerOrderDto beerOrderDto, BeerOrder beerOrder) {
+    BeerOrder allocatedOrder =  beerOrderRepository.findOneById(beerOrderDto.getId());
+
+    allocatedOrder.getBeerOrderLines().forEach(beerOrderLine -> {
+      beerOrderDto.getBeerOrderLines().forEach(beerOrderLineDto -> {
+        if(beerOrderLine.getId().equals(beerOrderLineDto.getId())) {
+          beerOrderLine.setQuantityAllocated(beerOrderLineDto.getQuantityAllocated());
+        }
+      });
+    });
+    beerOrderRepository.saveAndFlush(beerOrder);
   }
 }
