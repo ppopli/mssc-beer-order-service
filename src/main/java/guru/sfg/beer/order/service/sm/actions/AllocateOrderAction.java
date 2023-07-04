@@ -31,7 +31,7 @@ public class AllocateOrderAction implements Action<BeerOrderStatusEnum, BeerOrde
     String beerOrderId = (String) stateContext.getMessage()
         .getHeaders()
         .get(BeerOrderStateMachineConfig.BEER_ORDER_ID_HEADER);
-    BeerOrder beerOrder = beerOrderRepository.findOneById(UUID.fromString(beerOrderId));
+    BeerOrder beerOrder = beerOrderRepository.findById(UUID.fromString(beerOrderId)).get();
     AllocateBeerOrderRequest allocateBeerOrderRequest = AllocateBeerOrderRequest
         .builder()
         .beerOrderDto(beerOrderMapper.beerOrderToDto(beerOrder))
