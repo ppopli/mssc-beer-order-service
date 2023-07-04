@@ -30,9 +30,10 @@ public class ValidateOrderAction implements Action<BeerOrderStatusEnum, BeerOrde
   @Override
   public void execute(StateContext<BeerOrderStatusEnum, BeerOrderEventEnum> stateContext) {
     Optional.ofNullable(stateContext.getMessage())
-        .flatMap(msg -> Optional.ofNullable((UUID) msg.getHeaders()
+        .flatMap(msg -> Optional.ofNullable((String) msg.getHeaders()
             .getOrDefault(BeerOrderStateMachineConfig.BEER_ORDER_ID_HEADER, null))).ifPresent(orderId -> {
-          BeerOrder beerOrder = beerOrderRepository.findOneById(orderId);
+          BeerOrder beerOrder = beerOrderRepository.findById(UUID.fromString(orderId))
+              .orElseThrow(()-> new RuntimeException("beer order doesn't exists"));
           ValidateBeerOrderRequest request = ValidateBeerOrderRequest
               .builder()
               .beerOrderDto(beerOrderMapper.beerOrderToDto(beerOrder))

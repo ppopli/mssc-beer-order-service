@@ -28,7 +28,7 @@ public class BeerOrderStateChangeInterceptor extends
                              Message<BeerOrderEventEnum> message,
                              Transition<BeerOrderStatusEnum, BeerOrderEventEnum> transition,
                              StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> stateMachine) {
-      Optional.ofNullable(message).flatMap(msg -> Optional.ofNullable(UUID.class.cast(msg.getHeaders()
+      Optional.ofNullable(message).flatMap(msg -> Optional.of(UUID.fromString((String)msg.getHeaders()
         .getOrDefault(BeerOrderStateMachineConfig.BEER_ORDER_ID_HEADER, null)))).ifPresent(orderId -> {
       BeerOrder beerOrder = beerOrderRepository.findById(orderId)
           .orElseThrow(() -> new NoSuchElementException("PaymentId not found"));

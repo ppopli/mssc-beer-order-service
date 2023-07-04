@@ -1,6 +1,5 @@
 package guru.sfg.beer.order.service.services;
 
-import com.pulkit.sfgBrewery.events.ValidateBeerOrderResponse;
 import com.pulkit.sfgBrewery.model.BeerOrderDto;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderEventEnum;
@@ -31,12 +30,13 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
   public BeerOrder newBeerOrder(BeerOrder beerOrder) {
     beerOrder.setId(null);
     beerOrder.setOrderStatus(BeerOrderStatusEnum.NEW);
-    BeerOrder savedBeerOrder = beerOrderRepository.save(beerOrder);
+    BeerOrder savedBeerOrder = beerOrderRepository.saveAndFlush(beerOrder);
     sendBeerOrderEvent(savedBeerOrder, BeerOrderEventEnum.VALIDATE_ORDER);
     return savedBeerOrder;
   }
 
   @Override
+  @Transactional
   public void sendBeerOrderValidationResult(UUID beerOrderId, Boolean isValid) {
     BeerOrder beerOrder = beerOrderRepository.findById(beerOrderId)
         .orElseThrow(() -> new RuntimeException("BeerOrder not found"));
@@ -50,6 +50,7 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
   }
 
   @Override
+  @Transactional
   public void beerOrderAllocationPassed(BeerOrderDto beerOrderDto) {
     BeerOrder beerOrder = beerOrderRepository.findOneById(beerOrderDto.getId());
     sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_SUCCESS);
@@ -57,12 +58,14 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
   }
 
   @Override
+  @Transactional
   public void beerOrderAllocationFailed(BeerOrderDto beerOrderDto) {
     BeerOrder beerOrder = beerOrderRepository.findOneById(beerOrderDto.getId());
     sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_FAILED);
   }
 
   @Override
+  @Transactional
   public void beerOrderAllocationPendingInventory(BeerOrderDto beerOrderDto) {
     BeerOrder beerOrder = beerOrderRepository.findOneById(beerOrderDto.getId());
     sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_NO_INVENTORY);
@@ -72,7 +75,7 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
   private void sendBeerOrderEvent(BeerOrder beerOrder, BeerOrderEventEnum eventEnum) {
     StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> sm = build(beerOrder);
     sm.sendEvent(MessageBuilder.withPayload(eventEnum).setHeader(BeerOrderStateMachineConfig.BEER_ORDER_ID_HEADER,
-        beerOrder.getId()).build());
+        beerOrder.getId().toString()).build());
   }
 
   private StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> build(BeerOrder beerOrder) {

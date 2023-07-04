@@ -13,7 +13,7 @@ import java.util.Optional;
 @Service
 @Slf4j
 public class BeerServiceImpl implements BeerService {
-  private static final String GET_BEER_BY_UPC_URI = "/api/v1/beer/upc/{upc}";
+  public static final String GET_BEER_BY_UPC_URI = "/api/v1/beer/upc/{upc}";
   private final String beerServiceHost ;
   private final RestTemplate restTemplate;
 

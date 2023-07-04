@@ -42,11 +42,11 @@ public class TastingRoomService {
 
         List<Customer> customerList = customerRepository.findAllByCustomerNameLike(BeerOrderBootStrap.TASTING_ROOM);
 
-        if (customerList.size() == 1){ //should be just one
-            doPlaceOrder(customerList.get(0));
-        } else {
-            log.error("Too many or too few tasting room customers found");
-        }
+//        if (customerList.size() == 1){ //should be just one
+//            doPlaceOrder(customerList.get(0));
+//        } else {
+//            log.error("Too many or too few tasting room customers found");
+//        }
     }
 
     private void doPlaceOrder(Customer customer) {
