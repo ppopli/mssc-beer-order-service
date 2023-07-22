@@ -8,6 +8,7 @@ import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
 import guru.sfg.beer.order.service.sm.BeerOrderStateChangeInterceptor;
 import guru.sfg.beer.order.service.sm.BeerOrderStateMachineConfig;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.config.StateMachineFactory;
@@ -15,10 +16,12 @@ import org.springframework.statemachine.support.DefaultStateMachineContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BeerOrderManagerImpl implements BeerOrderManager {
   private final StateMachineFactory<BeerOrderStatusEnum, BeerOrderEventEnum> stateMachineFactory;
   private final BeerOrderRepository beerOrderRepository;
@@ -70,6 +73,15 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     BeerOrder beerOrder = beerOrderRepository.findOneById(beerOrderDto.getId());
     sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_NO_INVENTORY);
     updateAllocateQty(beerOrderDto, beerOrder);
+  }
+
+  @Override
+  public void beerOrderPickedUp(UUID id) {
+    Optional<BeerOrder> beerOrderOptional = beerOrderRepository.findById(id);
+    beerOrderOptional.ifPresentOrElse(beerOrder -> {
+      // do processing
+      sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.BEERORDER_PICKED_UP);
+    }, () -> log.error("Beer Order not found " + id) );
   }
 
   private void sendBeerOrderEvent(BeerOrder beerOrder, BeerOrderEventEnum eventEnum) {

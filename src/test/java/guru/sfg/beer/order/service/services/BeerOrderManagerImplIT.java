@@ -5,10 +5,7 @@ import com.github.jenspiegsa.wiremockextension.WireMockExtension;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.pulkit.sfgBrewery.model.BeerDto;
 import guru.sfg.beer.order.service.client.service.impl.BeerServiceImpl;
-import guru.sfg.beer.order.service.domain.BeerOrder;
-import guru.sfg.beer.order.service.domain.BeerOrderLine;
-import guru.sfg.beer.order.service.domain.BeerOrderStatusEnum;
-import guru.sfg.beer.order.service.domain.Customer;
+import guru.sfg.beer.order.service.domain.*;
 import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
 import guru.sfg.beer.order.service.repositories.CustomerRepository;
 import lombok.SneakyThrows;
@@ -89,11 +86,38 @@ public class BeerOrderManagerImplIT {
     await().untilAsserted(() -> {
       BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
       //todo: Allocated Status
-      Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATION_PENDING, foundOrder.getOrderStatus());
+      Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATED, foundOrder.getOrderStatus());
     });
     BeerOrder savedBeerOrder2 = beerOrderRepository.findById(savedBeerOrder.getId()).get();
     Assertions.assertNotNull(savedBeerOrder2);
     Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATED,  savedBeerOrder2.getOrderStatus());
+  }
+
+  @Test
+  @SneakyThrows
+  void testNewToPickedUp() {
+    BeerDto beerDto = BeerDto.builder()
+            .id(beerId)
+            .upc("12345")
+            .build();
+    wireMockServer.stubFor(get(BeerServiceImpl.GET_BEER_BY_UPC_URI.replace("{upc}", "12345"))
+            .willReturn(okJson(objectMapper.writeValueAsString(beerDto))));
+    BeerOrder beerOrder = createBeerOrder();
+    BeerOrder savedBeerOrder =  beerOrderManager.newBeerOrder(beerOrder);
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      //todo: Allocated Status
+      Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATED, foundOrder.getOrderStatus());
+    });
+    beerOrderManager.beerOrderPickedUp(savedBeerOrder.getId());
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      //todo: Allocated Status
+      Assertions.assertEquals(BeerOrderStatusEnum.PICKED_UP, foundOrder.getOrderStatus());
+    });
+
+    BeerOrder pickedUpOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+    Assertions.assertEquals(BeerOrderStatusEnum.PICKED_UP, pickedUpOrder.getOrderStatus());
   }
 
   public BeerOrder createBeerOrder() {
