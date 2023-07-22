@@ -1,5 +1,6 @@
 package guru.sfg.beer.order.service.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jenspiegsa.wiremockextension.WireMockExtension;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -85,7 +86,6 @@ public class BeerOrderManagerImplIT {
     BeerOrder savedBeerOrder =  beerOrderManager.newBeerOrder(beerOrder);
     await().untilAsserted(() -> {
       BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
-      //todo: Allocated Status
       Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATED, foundOrder.getOrderStatus());
     });
     BeerOrder savedBeerOrder2 = beerOrderRepository.findById(savedBeerOrder.getId()).get();
@@ -106,18 +106,33 @@ public class BeerOrderManagerImplIT {
     BeerOrder savedBeerOrder =  beerOrderManager.newBeerOrder(beerOrder);
     await().untilAsserted(() -> {
       BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
-      //todo: Allocated Status
       Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATED, foundOrder.getOrderStatus());
     });
     beerOrderManager.beerOrderPickedUp(savedBeerOrder.getId());
     await().untilAsserted(() -> {
       BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
-      //todo: Allocated Status
       Assertions.assertEquals(BeerOrderStatusEnum.PICKED_UP, foundOrder.getOrderStatus());
     });
 
     BeerOrder pickedUpOrder = beerOrderRepository.findById(beerOrder.getId()).get();
     Assertions.assertEquals(BeerOrderStatusEnum.PICKED_UP, pickedUpOrder.getOrderStatus());
+  }
+
+  @Test
+  public void testValidationFailed() throws JsonProcessingException {
+    BeerDto beerDto = BeerDto.builder()
+            .id(beerId)
+            .upc("12345")
+            .build();
+    wireMockServer.stubFor(get(BeerServiceImpl.GET_BEER_BY_UPC_URI.replace("{upc}", "12345"))
+            .willReturn(okJson(objectMapper.writeValueAsString(beerDto))));
+    BeerOrder beerOrder = createBeerOrder();
+    beerOrder.setCustomerRef("fail-validation");
+    beerOrderManager.newBeerOrder(beerOrder);
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      Assertions.assertEquals(BeerOrderStatusEnum.VALIDATION_EXCEPTION, foundOrder.getOrderStatus());
+    });
   }
 
   public BeerOrder createBeerOrder() {
