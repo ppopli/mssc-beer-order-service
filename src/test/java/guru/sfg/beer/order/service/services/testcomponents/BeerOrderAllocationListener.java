@@ -10,6 +10,8 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+
 @Slf4j
 @RequiredArgsConstructor
 @Component
@@ -19,13 +21,22 @@ public class BeerOrderAllocationListener {
 
     @JmsListener(destination = JmsConfig.ALLOCATE_ORDER_QUEUE)
     public void listen(@Payload AllocateBeerOrderRequest request) {
-        log.debug("Received message for Beer order allocation");
+        boolean allocationError = false;
+        boolean pendingInventory = false;
+
+        if (Objects.equals(request.getBeerOrderDto().getCustomerRef(), "fail-allocation")) {
+            allocationError = true;
+        }
+
+        if (Objects.equals(request.getBeerOrderDto().getCustomerRef(), "partial-allocation")) {
+            pendingInventory = true;
+        }
         jmsTemplate.convertAndSend(JmsConfig.ALLOCATE_ORDER_RESPONSE_QUEUE,
                 AllocateBeerOrderResult
                         .builder()
                         .beerOrderDto(request.getBeerOrderDto())
-                        .allocationError(false)
-                        .pendingInventory(false)
+                        .allocationError(allocationError)
+                        .pendingInventory(pendingInventory)
                         .build());
     }
 }
