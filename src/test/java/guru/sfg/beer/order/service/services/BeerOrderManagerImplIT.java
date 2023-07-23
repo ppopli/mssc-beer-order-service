@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jenspiegsa.wiremockextension.WireMockExtension;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.pulkit.sfgBrewery.events.AllocateBeerOrderFailureEvent;
 import com.pulkit.sfgBrewery.model.BeerDto;
 import guru.sfg.beer.order.service.client.service.impl.BeerServiceImpl;
+import guru.sfg.beer.order.service.config.JmsConfig;
 import guru.sfg.beer.order.service.domain.*;
 import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
 import guru.sfg.beer.order.service.repositories.CustomerRepository;
@@ -18,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.HashSet;
@@ -28,6 +31,7 @@ import static com.github.jenspiegsa.wiremockextension.ManagedWireMockServer.with
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @ExtendWith(WireMockExtension.class)
@@ -52,6 +56,9 @@ public class BeerOrderManagerImplIT {
 
   @Autowired
   private ObjectMapper objectMapper;
+
+  @Autowired
+  private JmsTemplate jmsTemplate;
 
   private Customer testCustomer;
 
@@ -145,11 +152,17 @@ public class BeerOrderManagerImplIT {
             .willReturn(okJson(objectMapper.writeValueAsString(beerDto))));
     BeerOrder beerOrder = createBeerOrder();
     beerOrder.setCustomerRef("fail-allocation");
-    beerOrderManager.newBeerOrder(beerOrder);
+    BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
     await().untilAsserted(() -> {
       BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
       Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATION_EXCEPTION, foundOrder.getOrderStatus());
     });
+
+    AllocateBeerOrderFailureEvent failureEvent =
+            (AllocateBeerOrderFailureEvent) jmsTemplate.receiveAndConvert(JmsConfig.ALLOCATE_FAILURE_QUEUE);
+
+    Assertions.assertNotNull(failureEvent);
+    assertThat(failureEvent.getOrderId()).isEqualTo(savedBeerOrder.getId());
   }
 
   @Test
