@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jenspiegsa.wiremockextension.WireMockExtension;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.pulkit.sfgBrewery.events.AllocateBeerOrderFailureEvent;
+import com.pulkit.sfgBrewery.events.DeallocateBeerOrderRequest;
 import com.pulkit.sfgBrewery.model.BeerDto;
 import guru.sfg.beer.order.service.client.service.impl.BeerServiceImpl;
 import guru.sfg.beer.order.service.config.JmsConfig;
@@ -180,6 +181,85 @@ public class BeerOrderManagerImplIT {
       BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
       Assertions.assertEquals(BeerOrderStatusEnum.PENDING_INVENTORY, foundOrder.getOrderStatus());
     });
+  }
+
+  @Test
+  void testValidationPendingToCancelled() throws JsonProcessingException {
+    BeerDto beerDto = BeerDto.builder()
+            .id(beerId)
+            .upc("12345")
+            .build();
+    wireMockServer.stubFor(get(BeerServiceImpl.GET_BEER_BY_UPC_URI.replace("{upc}", "12345"))
+            .willReturn(okJson(objectMapper.writeValueAsString(beerDto))));
+    BeerOrder beerOrder = createBeerOrder();
+    beerOrder.setCustomerRef("dont-validate");
+    BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      Assertions.assertEquals(BeerOrderStatusEnum.VALIDATION_PENDING, foundOrder.getOrderStatus());
+    });
+
+    beerOrderManager.cancelOrder(savedBeerOrder.getId());
+
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      Assertions.assertEquals(BeerOrderStatusEnum.CANCELLED, foundOrder.getOrderStatus());
+    });
+  }
+
+  @Test
+  void testAllocationPendingToCancelled() throws JsonProcessingException {
+    BeerDto beerDto = BeerDto.builder()
+            .id(beerId)
+            .upc("12345")
+            .build();
+    wireMockServer.stubFor(get(BeerServiceImpl.GET_BEER_BY_UPC_URI.replace("{upc}", "12345"))
+            .willReturn(okJson(objectMapper.writeValueAsString(beerDto))));
+    BeerOrder beerOrder = createBeerOrder();
+    beerOrder.setCustomerRef("dont-allocate");
+    BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATION_PENDING, foundOrder.getOrderStatus());
+    });
+
+    beerOrderManager.cancelOrder(savedBeerOrder.getId());
+
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      Assertions.assertEquals(BeerOrderStatusEnum.CANCELLED, foundOrder.getOrderStatus());
+    });
+  }
+
+  @Test
+  void testAllocatedToCancelled() throws JsonProcessingException {
+    BeerDto beerDto = BeerDto.builder()
+            .id(beerId)
+            .upc("12345")
+            .build();
+    wireMockServer.stubFor(get(BeerServiceImpl.GET_BEER_BY_UPC_URI.replace("{upc}", "12345"))
+            .willReturn(okJson(objectMapper.writeValueAsString(beerDto))));
+    BeerOrder beerOrder = createBeerOrder();
+    BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      Assertions.assertEquals(BeerOrderStatusEnum.ALLOCATED, foundOrder.getOrderStatus());
+    });
+
+    beerOrderManager.cancelOrder(savedBeerOrder.getId());
+
+    await().untilAsserted(() -> {
+      BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+      Assertions.assertEquals(BeerOrderStatusEnum.CANCELLED, foundOrder.getOrderStatus());
+    });
+
+    DeallocateBeerOrderRequest request =
+            (DeallocateBeerOrderRequest) jmsTemplate.receiveAndConvert(JmsConfig.DEALLOCATE_ORDER_QUEUE);
+    Assertions.assertNotNull(request);
+    assertThat(request.getBeerOrderDto().getId()).isEqualTo(savedBeerOrder.getId());
   }
 
   public BeerOrder createBeerOrder() {

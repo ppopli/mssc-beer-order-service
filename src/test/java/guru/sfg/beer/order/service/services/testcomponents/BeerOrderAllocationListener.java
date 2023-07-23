@@ -31,6 +31,10 @@ public class BeerOrderAllocationListener {
         if (Objects.equals(request.getBeerOrderDto().getCustomerRef(), "partial-allocation")) {
             pendingInventory = true;
         }
+
+        if (Objects.equals(request.getBeerOrderDto().getCustomerRef(), "dont-allocate")) {
+            return;
+        }
         jmsTemplate.convertAndSend(JmsConfig.ALLOCATE_ORDER_RESPONSE_QUEUE,
                 AllocateBeerOrderResult
                         .builder()
